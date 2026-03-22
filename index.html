@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="https://oocsi.id.tue.nl/assets/css/pico.indigo.min.css">
+  <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/oocsi-web.js"></script>
+  <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/things/oocsi-things.min.js"></script>
+
+  <style>
+    body {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+    }
+
+    #ringBtn {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: radial-gradient(circle at 38% 32%, #ff6b6b, #c0392b);
+      box-shadow:
+        0 0 0 12px rgba(192, 57, 43, 0.15),
+        0 0 0 24px rgba(192, 57, 43, 0.07),
+        0 8px 32px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      transition: transform 0.1s, box-shadow 0.1s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      margin-top: 2rem;
+    }
+
+    #ringBtn:active {
+      transform: scale(0.91);
+      box-shadow: 0 0 0 6px rgba(192, 57, 43, 0.2), 0 4px 16px rgba(0,0,0,0.5);
+    }
+
+    .bell-icon {
+      font-size: 3rem;
+      line-height: 1;
+    }
+
+    .bell-icon.ringing {
+      animation: shake 0.35s ease;
+    }
+
+    @keyframes shake {
+      0%   { transform: rotate(0deg); }
+      20%  { transform: rotate(-18deg); }
+      40%  { transform: rotate(18deg); }
+      60%  { transform: rotate(-12deg); }
+      80%  { transform: rotate(12deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .ring-count {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.08);
+      padding: 4px 14px;
+      border-radius: 999px;
+      margin-top: 1rem;
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: #888;
+      margin-top: 0.75rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #555;
+      transition: background 0.3s;
+    }
+    .dot.active {
+      background: #4caf50;
+      box-shadow: 0 0 8px rgba(76,175,80,0.8);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- REQUIRED: oocsiThings injects the team dialog into this div -->
+  <div id="canvasContainer"></div>
+
+  <!-- UI shown after team is chosen and thing() fires -->
+  <button id="ringBtn" onclick="pressRing()" style="display:none">
+    <span class="bell-icon" id="bell">🔔</span>
+    <span>RING</span>
+  </button>
+  <div class="ring-count" id="countLabel" style="display:none">rings sent: 0</div>
+  <div class="status-row" style="display:none" id="statusRow">
+    <span class="dot" id="dot"></span>
+    <span id="statusLabel">connecting…</span>
+  </div>
+
+  <script>
+    // ── 1. Config: leave empty so the team selection dialog appears ───────
+    oocsiThingsConfig = {
+      teamspace: ""
+    };
+
+    // ── 2. Shared data handle, assigned inside thing() ────────────────────
+    let ring;
+
+    // ── 3. thing() is called automatically by oocsiThings after team pick ─
+    function thing() {
+      // Registers as 'Ring Button 🔔' with slug 'ringbutton'
+      // Output key sent over OOCSI will be: ringbutton_ring
+      oocsiThings.register('Ring Button 🔔', 'ringbutton', [], ['ring']);
+      ring = oocsiThings.data('ring');
+
+      // Reveal the UI now that we are connected
+      document.getElementById('ringBtn').style.display    = 'flex';
+      document.getElementById('countLabel').style.display = 'block';
+      document.getElementById('statusRow').style.display  = 'flex';
+      setStatus('ready ✓', true);
+    }
+
+    // ── 4. Button press logic ─────────────────────────────────────────────
+    let ringCount = 0;
+    let cooldown  = false;
+
+    function pressRing() {
+      if (cooldown || !ring) return;
+      cooldown = true;
+
+      ring(1);                   // sends ringbutton_ring = 1
+      oocsiThings.activity();
+
+      const bell = document.getElementById('bell');
+      bell.classList.add('ringing');
+      ringCount++;
+      document.getElementById('countLabel').textContent = `rings sent: ${ringCount}`;
+      setStatus('ring sent!', true);
+
+      setTimeout(() => {
+        ring(0);                 // sends ringbutton_ring = 0 (pulse off)
+        bell.classList.remove('ringing');
+        setStatus('ready ✓', true);
+        cooldown = false;
+      }, 400);
+    }
+
+    function setStatus(text, active) {
+      document.getElementById('statusLabel').textContent = text;
+      document.getElementById('dot').className = 'dot' + (active ? ' active' : '');
+    }
+  </script>
+</body>
+</html>

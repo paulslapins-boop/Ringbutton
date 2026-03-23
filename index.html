@@ -4,60 +4,151 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ring Button</title>
-  <link rel="stylesheet" type="text/css" href="https://oocsi.id.tue.nl/assets/css/pico.indigo.min.css">
   <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/oocsi-web.js"></script>
-  <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/things/oocsi-things.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #000;
+      background: #1a1a1a;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      margin: 0;
-      font-family: sans-serif;
       touch-action: none;
       user-select: none;
+      -webkit-user-select: none;
     }
 
+    /* ── Yellow hazard box ── */
+    .box {
+      width: 280px;
+      height: 280px;
+      border-radius: 18px;
+      background: repeating-linear-gradient(
+        -45deg,
+        #f5c800,
+        #f5c800 24px,
+        #1a1a1a 24px,
+        #1a1a1a 48px
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 10px 40px rgba(0,0,0,0.7),
+        inset 0 2px 4px rgba(255,255,255,0.1);
+      position: relative;
+    }
+
+    /* ── Silver metal plate ── */
+    .plate {
+      width: 160px;
+      height: 160px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #d0d0d0, #888, #ccc, #999);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow:
+        0 4px 12px rgba(0,0,0,0.5),
+        inset 0 1px 2px rgba(255,255,255,0.5);
+      position: relative;
+    }
+
+    /* ── Screws in corners ── */
+    .plate::before,
+    .plate::after,
+    .screw2::before,
+    .screw2::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #eee, #777);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .plate::before { top: 8px; left: 8px; }
+    .plate::after  { top: 8px; right: 8px; }
+    .screw2::before { bottom: 8px; left: 8px; }
+    .screw2::after  { bottom: 8px; right: 8px; }
+
+    /* ── Button base (neck) ── */
+    .btn-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .neck {
+      width: 80px;
+      height: 30px;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, #999, #bbb, #888);
+      position: absolute;
+      bottom: -8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      z-index: 0;
+    }
+
+    /* ── The big red dome ── */
     #ringBtn {
-      width: 220px;
-      height: 220px;
+      width: 110px;
+      height: 110px;
       border-radius: 50%;
       border: none;
       cursor: pointer;
-      background: radial-gradient(circle at 38% 32%, #ff6b6b, #c0392b);
+      position: relative;
+      z-index: 1;
+
+      background: radial-gradient(circle at 35% 28%,
+        #ff9999 0%,
+        #ff2222 40%,
+        #aa0000 75%,
+        #880000 100%
+      );
+
       box-shadow:
-        0 0 0 16px rgba(192,57,43,0.12),
-        0 0 0 32px rgba(192,57,43,0.06),
-        0 8px 32px rgba(0,0,0,0.6);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 1rem;
-      font-weight: 700;
-      gap: 10px;
-      -webkit-tap-highlight-color: transparent;
+        0 -2px 6px rgba(255,150,150,0.3) inset,
+        0 8px 20px rgba(0,0,0,0.5),
+        0 0 0 3px #660000;
+
       transition: transform 0.07s, box-shadow 0.07s;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    #ringBtn:active {
-      transform: scale(0.91);
-      box-shadow: 0 0 0 6px rgba(192,57,43,0.2), 0 4px 16px rgba(0,0,0,0.5);
+    /* shiny highlight on dome */
+    #ringBtn::before {
+      content: '';
+      position: absolute;
+      top: 14%;
+      left: 20%;
+      width: 38%;
+      height: 25%;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
+      filter: blur(4px);
+      pointer-events: none;
     }
 
-    .bell { font-size: 3rem; pointer-events: none; }
+    #ringBtn:active,
+    #ringBtn.pressed {
+      transform: scale(0.88) translateY(4px);
+      box-shadow:
+        0 -2px 4px rgba(255,150,150,0.2) inset,
+        0 3px 8px rgba(0,0,0,0.5),
+        0 0 0 3px #660000;
+    }
 
+    /* ── Status ── */
     .status {
+      margin-top: 2rem;
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 1.5rem;
+      font-family: sans-serif;
       font-size: 0.75rem;
       color: #666;
     }
@@ -65,62 +156,58 @@
       width: 8px; height: 8px;
       border-radius: 50%;
       background: #333;
-      transition: background 0.2s;
+      transition: background 0.3s;
     }
-    .dot.on { background: #4caf50; box-shadow: 0 0 8px rgba(76,175,80,0.8); }
+    .dot.on {
+      background: #4caf50;
+      box-shadow: 0 0 8px rgba(76,175,80,0.9);
+    }
   </style>
 </head>
 <body>
 
-  <!-- oocsiThings injects team dialog here → shows on /things page -->
-  <div id="canvasContainer"></div>
+  <div class="box">
+    <div class="plate">
+      <div class="screw2">
+        <div class="btn-wrap">
+          <div class="neck"></div>
+          <button id="ringBtn"
+            onpointerdown="sendRing(event)"
+            onpointerup="releaseBtn()"
+            onpointerleave="releaseBtn()"
+            onpointercancel="releaseBtn()">
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <button id="ringBtn" style="display:none" onpointerdown="sendRing()">
-    <span class="bell">🔔</span>
-    <span>RING</span>
-  </button>
-
-  <div class="status" style="display:none" id="statusRow">
-    <span class="dot on" id="dot"></span>
-    <span id="statusLabel">ready</span>
+  <div class="status">
+    <span class="dot" id="dot"></span>
+    <span id="statusLabel">connecting…</span>
   </div>
 
   <script>
-    // ── oocsiThings handles team selection + /things registration ─────────
-    oocsiThingsConfig = { teamspace: "" };
+    const CHANNEL = "OOCSI-things/team-1";
+    const btn     = document.getElementById('ringBtn');
 
-    // this will hold the channel name once team is picked
-    let channel = null;
+    // connect directly — no team dialog, instant sends
+    window.OOCSI.connect("wss://oocsi.id.tue.nl/ws", "ringbutton_###");
 
-    function thing() {
-      // register so it appears on the /things overview page
-      oocsiThings.register('Ring Button 🔔', 'ringbutton', [], ['ring']);
+    // show connected after 2s
+    setTimeout(() => {
+      document.getElementById('dot').className = 'dot on';
+      document.getElementById('statusLabel').textContent = 'team-1 · ready';
+    }, 2000);
 
-      // grab the channel name that oocsiThings constructed
-      // format is always "OOCSI-things/team-X"
-      channel = oocsiThings.channel || oocsiThings._channel;
-
-      // fallback: read it from the team input if the above doesn't work
-      if (!channel) {
-        const teamInput = document.getElementById('team-choice');
-        if (teamInput && teamInput.value) {
-          channel = 'OOCSI-things/' + teamInput.value.toLowerCase().replace(' ', '-');
-        }
-      }
-
-      // show UI
-      document.getElementById('ringBtn').style.display   = 'flex';
-      document.getElementById('statusRow').style.display = 'flex';
-      document.getElementById('statusLabel').textContent  = 'connected to ' + channel;
+    function sendRing(e) {
+      e.preventDefault();
+      btn.classList.add('pressed');
+      window.OOCSI.send(CHANNEL, { ringbutton_ring: 1 });
     }
 
-    // ── Send instantly via window.OOCSI directly — no framework delay ─────
-    function sendRing() {
-      if (!channel) return;
-      // fast direct send, same as maze controller
-      window.OOCSI.send(channel, { ringbutton_ring: 1 });
-      // also tell oocsiThings we are active so it stays on /things page
-      oocsiThings.activity();
+    function releaseBtn() {
+      btn.classList.remove('pressed');
     }
   </script>
 </body>

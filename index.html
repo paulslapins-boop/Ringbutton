@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ring Button</title>
-  <script src="https://oocsi.id.tue.nl/assets/js/oocsi-web.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://oocsi.id.tue.nl/assets/css/pico.indigo.min.css">
+  <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/oocsi-web.js"></script>
+  <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/things/oocsi-things.min.js"></script>
   <style>
     * { box-sizing: border-box; }
 
@@ -51,7 +53,6 @@
 
     .bell { font-size: 3rem; pointer-events: none; }
 
-    /* status dot */
     .status {
       display: flex;
       align-items: center;
@@ -66,53 +67,60 @@
       background: #333;
       transition: background 0.2s;
     }
-    .dot.connected { background: #4caf50; box-shadow: 0 0 8px rgba(76,175,80,0.8); }
+    .dot.on { background: #4caf50; box-shadow: 0 0 8px rgba(76,175,80,0.8); }
   </style>
 </head>
 <body>
 
-  <button id="ringBtn" onpointerdown="sendRing()">
+  <!-- oocsiThings injects team dialog here → shows on /things page -->
+  <div id="canvasContainer"></div>
+
+  <button id="ringBtn" style="display:none" onpointerdown="sendRing()">
     <span class="bell">🔔</span>
     <span>RING</span>
   </button>
 
-  <div class="status">
-    <span class="dot" id="dot"></span>
-    <span id="statusLabel">connecting…</span>
+  <div class="status" style="display:none" id="statusRow">
+    <span class="dot on" id="dot"></span>
+    <span id="statusLabel">ready</span>
   </div>
 
   <script>
-    // ── Config ────────────────────────────────────────────────────────────
-    const CHANNEL     = "OOCSI-things/team-1";
-    const CLIENT_NAME = "ringbutton_###";        // ### = random number added by OOCSI
-    const DATA_KEY    = "ringbutton_ring";
+    // ── oocsiThings handles team selection + /things registration ─────────
+    oocsiThingsConfig = { teamspace: "" };
 
-    // ── Connect directly via WebSocket, same as maze controller ──────────
-    window.OOCSI.connect("wss://oocsi.id.tue.nl/ws", CLIENT_NAME);
+    // this will hold the channel name once team is picked
+    let channel = null;
 
-    // ── Show connected status ─────────────────────────────────────────────
-    // oocsi-web fires a 'connected' event we can listen to
-    window.OOCSI.subscribe(CHANNEL, () => {}); // subscribe to keep connection alive
+    function thing() {
+      // register so it appears on the /things overview page
+      oocsiThings.register('Ring Button 🔔', 'ringbutton', [], ['ring']);
 
-    // Poll until connected
-    const checkConn = setInterval(() => {
-      if (window.OOCSI.isConnected && window.OOCSI.isConnected()) {
-        document.getElementById('dot').className = 'dot connected';
-        document.getElementById('statusLabel').textContent = 'connected — tap to ring!';
-        clearInterval(checkConn);
+      // grab the channel name that oocsiThings constructed
+      // format is always "OOCSI-things/team-X"
+      channel = oocsiThings.channel || oocsiThings._channel;
+
+      // fallback: read it from the team input if the above doesn't work
+      if (!channel) {
+        const teamInput = document.getElementById('team-choice');
+        if (teamInput && teamInput.value) {
+          channel = 'OOCSI-things/' + teamInput.value.toLowerCase().replace(' ', '-');
+        }
       }
-    }, 200);
 
-    // Fallback: assume connected after 2s
-    setTimeout(() => {
-      document.getElementById('dot').className = 'dot connected';
-      document.getElementById('statusLabel').textContent = 'ready — tap to ring!';
-      clearInterval(checkConn);
-    }, 2000);
+      // show UI
+      document.getElementById('ringBtn').style.display   = 'flex';
+      document.getElementById('statusRow').style.display = 'flex';
+      document.getElementById('statusLabel').textContent  = 'connected to ' + channel;
+    }
 
-    // ── Send on every single press — no cooldown, no delay ───────────────
+    // ── Send instantly via window.OOCSI directly — no framework delay ─────
     function sendRing() {
-      window.OOCSI.send(CHANNEL, { [DATA_KEY]: 1 });
+      if (!channel) return;
+      // fast direct send, same as maze controller
+      window.OOCSI.send(channel, { ringbutton_ring: 1 });
+      // also tell oocsiThings we are active so it stays on /things page
+      oocsiThings.activity();
     }
   </script>
 </body>

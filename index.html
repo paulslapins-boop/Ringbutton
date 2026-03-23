@@ -6,348 +6,68 @@
   <link rel="stylesheet" type="text/css" href="https://oocsi.id.tue.nl/assets/css/pico.indigo.min.css">
   <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/oocsi-web.js"></script>
   <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/things/oocsi-things.min.js"></script>
-
   <style>
-    * { box-sizing: border-box; }
-
     body {
-      background: #0a0a0a;
+      background: #000;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
       margin: 0;
-      font-family: sans-serif;
       touch-action: none;
-      user-select: none;
     }
 
-    /* ── Button ── */
     #ringBtn {
-      width: 210px;
-      height: 210px;
+      width: 220px;
+      height: 220px;
       border-radius: 50%;
       border: none;
       cursor: pointer;
       background: radial-gradient(circle at 38% 32%, #ff6b6b, #c0392b);
-      box-shadow:
-        0 0 0 14px rgba(192, 57, 43, 0.12),
-        0 0 0 28px rgba(192, 57, 43, 0.06),
-        0 8px 32px rgba(0,0,0,0.6);
+      box-shadow: 0 0 0 18px rgba(192,57,43,0.12), 0 8px 32px rgba(0,0,0,0.6);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
       color: white;
+      font-family: sans-serif;
       font-size: 1rem;
       font-weight: 700;
-      letter-spacing: 0.06em;
-      transition: transform 0.08s, box-shadow 0.08s, background 0.2s;
+      gap: 10px;
       -webkit-tap-highlight-color: transparent;
-      position: relative;
-      overflow: hidden;
+      transition: transform 0.07s;
     }
 
-    #ringBtn.pressing {
-      transform: scale(0.93);
-      box-shadow: 0 0 0 6px rgba(192,57,43,0.2), 0 4px 16px rgba(0,0,0,0.5);
+    #ringBtn:active {
+      transform: scale(0.91);
     }
 
-    /* hold = turns orange */
-    #ringBtn.holding {
-      background: radial-gradient(circle at 38% 32%, #ffb347, #e67e22);
-      box-shadow:
-        0 0 0 14px rgba(230,126,34,0.2),
-        0 0 0 28px rgba(230,126,34,0.1),
-        0 8px 32px rgba(0,0,0,0.6);
-    }
-
-    /* hold triggered = turns green flash */
-    #ringBtn.triggered {
-      background: radial-gradient(circle at 38% 32%, #55efc4, #00b894);
-    }
-
-    .bell-icon {
-      font-size: 3rem;
-      line-height: 1;
-      pointer-events: none;
-    }
-
-    .bell-icon.ringing {
-      animation: shake 0.35s ease;
-    }
-
-    @keyframes shake {
-      0%   { transform: rotate(0deg); }
-      20%  { transform: rotate(-20deg); }
-      40%  { transform: rotate(20deg); }
-      60%  { transform: rotate(-12deg); }
-      80%  { transform: rotate(12deg); }
-      100% { transform: rotate(0deg); }
-    }
-
-    /* ── Hold progress ring ── */
-    .progress-ring {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    .progress-ring circle {
-      fill: none;
-      stroke: rgba(255,255,255,0.7);
-      stroke-width: 5;
-      stroke-linecap: round;
-      stroke-dasharray: 628;       /* 2π × r (r=100 in viewBox 210) */
-      stroke-dashoffset: 628;
-      transform: rotate(-90deg);
-      transform-origin: 50% 50%;
-      transition: stroke-dashoffset 0.05s linear;
-    }
-
-    /* ── Labels ── */
-    #modeLabel {
-      margin-top: 1.2rem;
-      font-size: 0.75rem;
-      letter-spacing: 0.08em;
-      color: #888;
-      text-transform: uppercase;
-    }
-
-    #countLabel {
-      font-size: 0.75rem;
-      color: rgba(255,255,255,0.4);
-      background: rgba(255,255,255,0.06);
-      padding: 3px 12px;
-      border-radius: 999px;
-      margin-top: 0.5rem;
-    }
-
-    /* ── Status dot ── */
-    .status-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin-top: 0.7rem;
-      font-size: 0.72rem;
-      color: #666;
-    }
-    .dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: #444;
-      transition: background 0.3s;
-    }
-    .dot.active { background: #4caf50; box-shadow: 0 0 7px rgba(76,175,80,0.9); }
-    .dot.sending { background: #ff9800; box-shadow: 0 0 7px rgba(255,152,0,0.9); }
+    .bell { font-size: 3rem; }
   </style>
 </head>
-
 <body>
 
-  <!-- oocsiThings injects the team dialog here -->
   <div id="canvasContainer"></div>
 
-  <button id="ringBtn" style="display:none"
-    onpointerdown="onDown(event)"
-    onpointerup="onUp(event)"
-    onpointerleave="onUp(event)"
-    onpointercancel="onUp(event)">
-
-    <!-- SVG progress ring shown while holding -->
-    <svg class="progress-ring" viewBox="0 0 210 210">
-      <circle id="progressCircle" cx="105" cy="105" r="98"/>
-    </svg>
-
-    <span class="bell-icon" id="bell">🔔</span>
-    <span id="btnLabel">RING</span>
+  <button id="ringBtn" style="display:none" onpointerdown="sendRing()">
+    <span class="bell">🔔</span>
+    <span>RING</span>
   </button>
 
-  <div id="modeLabel"  style="display:none">tap to ring · hold 3s to alert</div>
-  <div id="countLabel" style="display:none">sent: 0</div>
-  <div class="status-row" style="display:none" id="statusRow">
-    <span class="dot" id="dot"></span>
-    <span id="statusLabel">connecting…</span>
-  </div>
-
   <script>
-    // ─────────────────────────────────────────────────────────────────────
-    // OOCSI config — empty = show team selection dialog
-    // ─────────────────────────────────────────────────────────────────────
     oocsiThingsConfig = { teamspace: "" };
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Shared data handles (set inside thing())
-    //   ringbutton_ring  : 0 / 1  — short tap pulse
-    //   ringbutton_hold  : 0 / 1  — held for 3 seconds (sustained signal)
-    //   ringbutton_press : 0 / 1  — 1 while finger is down, 0 on release
-    // ─────────────────────────────────────────────────────────────────────
-    let ring, hold, press;
+    let ring;
 
     function thing() {
-      oocsiThings.register('Ring Button 🔔', 'ringbutton', [], ['ring', 'hold', 'press']);
-      ring  = oocsiThings.data('ring');
-      hold  = oocsiThings.data('hold');
-      press = oocsiThings.data('press');
-
-      // show UI
-      document.getElementById('ringBtn').style.display   = 'flex';
-      document.getElementById('modeLabel').style.display = 'block';
-      document.getElementById('countLabel').style.display= 'block';
-      document.getElementById('statusRow').style.display = 'flex';
-      setStatus('ready ✓', 'active');
+      oocsiThings.register('Ring Button 🔔', 'ringbutton', [], ['ring']);
+      ring = oocsiThings.data('ring');
+      document.getElementById('ringBtn').style.display = 'flex';
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // State
-    // ─────────────────────────────────────────────────────────────────────
-    const HOLD_MS      = 3000;   // ms to trigger hold
-    const PULSE_MS     = 400;    // how long ring=1 stays high
-    const SEND_RATE_MS = 100;    // how often we send press=1 while held
-
-    let sentCount   = 0;
-    let isDown      = false;
-    let holdTimer   = null;
-    let sendTimer   = null;
-    let holdFired   = false;
-    let pressStart  = 0;
-
-    const btn      = document.getElementById('ringBtn');
-    const bell     = document.getElementById('bell');
-    const circle   = document.getElementById('progressCircle');
-    const CIRC     = 628; // stroke-dasharray full circumference
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Pointer DOWN
-    // ─────────────────────────────────────────────────────────────────────
-    function onDown(e) {
-      if (!press) return;
-      e.preventDefault();
-      if (isDown) return;
-
-      isDown     = true;
-      holdFired  = false;
-      pressStart = Date.now();
-
-      btn.classList.add('pressing');
-      btn.setPointerCapture(e.pointerId);
-
-      // send press=1 immediately and keep repeating
-      sendPress(1);
-      sendTimer = setInterval(() => sendPress(1), SEND_RATE_MS);
-
-      // animate progress ring
-      animateProgress();
-
-      // after HOLD_MS, fire hold signal
-      holdTimer = setTimeout(() => {
-        holdFired = true;
-        btn.classList.add('holding');
-        document.getElementById('btnLabel').textContent = 'HOLD!';
-        fireHold();
-      }, HOLD_MS);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Pointer UP / LEAVE
-    // ─────────────────────────────────────────────────────────────────────
-    function onUp(e) {
-      if (!isDown) return;
-      isDown = false;
-
-      clearTimeout(holdTimer);
-      clearInterval(sendTimer);
-      cancelAnimationFrame(rafId);
-
-      // reset visual
-      btn.classList.remove('pressing', 'holding', 'triggered');
-      document.getElementById('btnLabel').textContent = 'RING';
-      circle.style.strokeDashoffset = CIRC;
-
-      // send press=0
-      sendPress(0);
-
-      if (!holdFired) {
-        // short tap → pulse ring=1
-        fireTap();
-      } else {
-        // hold was already fired, send hold=0
-        hold(0);
-        oocsiThings.activity();
-        setStatus('hold released', 'active');
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Tap pulse
-    // ─────────────────────────────────────────────────────────────────────
-    function fireTap() {
+    function sendRing() {
       ring(1);
       oocsiThings.activity();
-      bell.classList.add('ringing');
-      bumpCount();
-      setStatus('ring sent!', 'sending');
-
-      setTimeout(() => {
-        ring(0);
-        bell.classList.remove('ringing');
-        setStatus('ready ✓', 'active');
-      }, PULSE_MS);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Hold trigger
-    // ─────────────────────────────────────────────────────────────────────
-    function fireHold() {
-      hold(1);
-      oocsiThings.activity();
-      bumpCount();
-      setStatus('HOLD signal sent!', 'sending');
-
-      // flash green briefly
-      btn.classList.add('triggered');
-      setTimeout(() => btn.classList.remove('triggered'), 300);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Continuous press signal (sent every SEND_RATE_MS while held)
-    // ─────────────────────────────────────────────────────────────────────
-    function sendPress(val) {
-      if (!press) return;
-      press(val);
-      if (val === 1) oocsiThings.activity();
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Progress ring animation
-    // ─────────────────────────────────────────────────────────────────────
-    let rafId;
-    function animateProgress() {
-      function step() {
-        if (!isDown) return;
-        const elapsed = Date.now() - pressStart;
-        const pct     = Math.min(elapsed / HOLD_MS, 1);
-        circle.style.strokeDashoffset = CIRC - pct * CIRC;
-        if (pct < 1) rafId = requestAnimationFrame(step);
-      }
-      rafId = requestAnimationFrame(step);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────
-    function bumpCount() {
-      sentCount++;
-      document.getElementById('countLabel').textContent = `sent: ${sentCount}`;
-    }
-
-    function setStatus(text, dotClass) {
-      document.getElementById('statusLabel').textContent = text;
-      document.getElementById('dot').className = 'dot ' + (dotClass || '');
     }
   </script>
 </body>

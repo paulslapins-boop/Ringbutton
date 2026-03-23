@@ -1,20 +1,24 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" type="text/css" href="https://oocsi.id.tue.nl/assets/css/pico.indigo.min.css">
-  <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/oocsi-web.js"></script>
-  <script type="text/javascript" src="https://oocsi.id.tue.nl/assets/js/things/oocsi-things.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ring Button</title>
+  <script src="https://oocsi.id.tue.nl/assets/js/oocsi-web.min.js"></script>
   <style>
+    * { box-sizing: border-box; }
+
     body {
       background: #000;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
       margin: 0;
+      font-family: sans-serif;
       touch-action: none;
+      user-select: none;
     }
 
     #ringBtn {
@@ -24,50 +28,91 @@
       border: none;
       cursor: pointer;
       background: radial-gradient(circle at 38% 32%, #ff6b6b, #c0392b);
-      box-shadow: 0 0 0 18px rgba(192,57,43,0.12), 0 8px 32px rgba(0,0,0,0.6);
+      box-shadow:
+        0 0 0 16px rgba(192,57,43,0.12),
+        0 0 0 32px rgba(192,57,43,0.06),
+        0 8px 32px rgba(0,0,0,0.6);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       color: white;
-      font-family: sans-serif;
       font-size: 1rem;
       font-weight: 700;
       gap: 10px;
       -webkit-tap-highlight-color: transparent;
-      transition: transform 0.07s;
+      transition: transform 0.07s, box-shadow 0.07s;
     }
 
     #ringBtn:active {
       transform: scale(0.91);
+      box-shadow: 0 0 0 6px rgba(192,57,43,0.2), 0 4px 16px rgba(0,0,0,0.5);
     }
 
-    .bell { font-size: 3rem; }
+    .bell { font-size: 3rem; pointer-events: none; }
+
+    /* status dot */
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: #666;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #333;
+      transition: background 0.2s;
+    }
+    .dot.connected { background: #4caf50; box-shadow: 0 0 8px rgba(76,175,80,0.8); }
   </style>
 </head>
 <body>
 
-  <div id="canvasContainer"></div>
-
-  <button id="ringBtn" style="display:none" onpointerdown="sendRing()">
+  <button id="ringBtn" onpointerdown="sendRing()">
     <span class="bell">🔔</span>
     <span>RING</span>
   </button>
 
+  <div class="status">
+    <span class="dot" id="dot"></span>
+    <span id="statusLabel">connecting…</span>
+  </div>
+
   <script>
-    oocsiThingsConfig = { teamspace: "" };
+    // ── Config ────────────────────────────────────────────────────────────
+    const CHANNEL     = "OOCSI-things/team-1";
+    const CLIENT_NAME = "ringbutton_###";        // ### = random number added by OOCSI
+    const DATA_KEY    = "ringbutton_ring";
 
-    let ring;
+    // ── Connect directly via WebSocket, same as maze controller ──────────
+    window.OOCSI.connect("wss://oocsi.id.tue.nl/ws", CLIENT_NAME);
 
-    function thing() {
-      oocsiThings.register('Ring Button 🔔', 'ringbutton', [], ['ring']);
-      ring = oocsiThings.data('ring');
-      document.getElementById('ringBtn').style.display = 'flex';
-    }
+    // ── Show connected status ─────────────────────────────────────────────
+    // oocsi-web fires a 'connected' event we can listen to
+    window.OOCSI.subscribe(CHANNEL, () => {}); // subscribe to keep connection alive
 
+    // Poll until connected
+    const checkConn = setInterval(() => {
+      if (window.OOCSI.isConnected && window.OOCSI.isConnected()) {
+        document.getElementById('dot').className = 'dot connected';
+        document.getElementById('statusLabel').textContent = 'connected — tap to ring!';
+        clearInterval(checkConn);
+      }
+    }, 200);
+
+    // Fallback: assume connected after 2s
+    setTimeout(() => {
+      document.getElementById('dot').className = 'dot connected';
+      document.getElementById('statusLabel').textContent = 'ready — tap to ring!';
+      clearInterval(checkConn);
+    }, 2000);
+
+    // ── Send on every single press — no cooldown, no delay ───────────────
     function sendRing() {
-      ring(1);
-      oocsiThings.activity();
+      window.OOCSI.send(CHANNEL, { [DATA_KEY]: 1 });
     }
   </script>
 </body>

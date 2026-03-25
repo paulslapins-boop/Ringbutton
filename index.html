@@ -35,10 +35,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow:
-        0 10px 40px rgba(0,0,0,0.7),
-        inset 0 2px 4px rgba(255,255,255,0.1);
-      position: relative;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
     }
 
     /* ── Silver metal plate ── */
@@ -50,21 +47,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow:
-        0 4px 12px rgba(0,0,0,0.5),
-        inset 0 1px 2px rgba(255,255,255,0.5);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.5);
       position: relative;
     }
 
-    /* ── Screws in corners ── */
-    .plate::before,
-    .plate::after,
-    .screw2::before,
-    .screw2::after {
+    /* screws */
+    .plate::before, .plate::after,
+    .screw2::before, .screw2::after {
       content: '';
       position: absolute;
-      width: 10px;
-      height: 10px;
+      width: 10px; height: 10px;
       border-radius: 50%;
       background: radial-gradient(circle at 35% 35%, #eee, #777);
       box-shadow: 0 1px 3px rgba(0,0,0,0.5);
@@ -74,7 +66,6 @@
     .screw2::before { bottom: 8px; left: 8px; }
     .screw2::after  { bottom: 8px; right: 8px; }
 
-    /* ── Button base (neck) ── */
     .btn-wrap {
       position: relative;
       display: flex;
@@ -83,8 +74,7 @@
     }
 
     .neck {
-      width: 80px;
-      height: 30px;
+      width: 80px; height: 30px;
       border-radius: 50%;
       background: linear-gradient(to bottom, #999, #bbb, #888);
       position: absolute;
@@ -93,47 +83,37 @@
       z-index: 0;
     }
 
-    /* ── The big red dome ── */
+    /* ── Big red dome ── */
     #ringBtn {
-      width: 110px;
-      height: 110px;
+      width: 110px; height: 110px;
       border-radius: 50%;
       border: none;
       cursor: pointer;
       position: relative;
       z-index: 1;
-
       background: radial-gradient(circle at 35% 28%,
-        #ff9999 0%,
-        #ff2222 40%,
-        #aa0000 75%,
-        #880000 100%
+        #ff9999 0%, #ff2222 40%, #aa0000 75%, #880000 100%
       );
-
       box-shadow:
         0 -2px 6px rgba(255,150,150,0.3) inset,
         0 8px 20px rgba(0,0,0,0.5),
         0 0 0 3px #660000;
-
       transition: transform 0.07s, box-shadow 0.07s;
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* shiny highlight on dome */
+    /* gloss highlight */
     #ringBtn::before {
       content: '';
       position: absolute;
-      top: 14%;
-      left: 20%;
-      width: 38%;
-      height: 25%;
+      top: 14%; left: 20%;
+      width: 38%; height: 25%;
       border-radius: 50%;
       background: rgba(255,255,255,0.35);
       filter: blur(4px);
       pointer-events: none;
     }
 
-    #ringBtn:active,
     #ringBtn.pressed {
       transform: scale(0.88) translateY(4px);
       box-shadow:
@@ -142,9 +122,32 @@
         0 0 0 3px #660000;
     }
 
-    /* ── Status ── */
+    /* progress ring around the box while holding */
+    .box {
+      position: relative;
+    }
+    #progressBar {
+      position: absolute;
+      bottom: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 260px;
+      height: 6px;
+      background: #333;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    #progressFill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, #ff9800, #ff2222);
+      border-radius: 3px;
+      transition: width 0.1s linear;
+    }
+
+    /* status */
     .status {
-      margin-top: 2rem;
+      margin-top: 2.5rem;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -158,10 +161,8 @@
       background: #333;
       transition: background 0.3s;
     }
-    .dot.on {
-      background: #4caf50;
-      box-shadow: 0 0 8px rgba(76,175,80,0.9);
-    }
+    .dot.on { background: #4caf50; box-shadow: 0 0 8px rgba(76,175,80,0.9); }
+    .dot.sending { background: #ff9800; box-shadow: 0 0 8px rgba(255,152,0,0.9); }
   </style>
 </head>
 <body>
@@ -172,14 +173,15 @@
         <div class="btn-wrap">
           <div class="neck"></div>
           <button id="ringBtn"
-            onpointerdown="sendRing(event)"
-            onpointerup="releaseBtn()"
-            onpointerleave="releaseBtn()"
-            onpointercancel="releaseBtn()">
+            onpointerdown="onDown(event)"
+            onpointerup="onUp(event)"
+            onpointerleave="onUp(event)"
+            onpointercancel="onUp(event)">
           </button>
         </div>
       </div>
     </div>
+    <div id="progressBar"><div id="progressFill"></div></div>
   </div>
 
   <div class="status">
@@ -188,26 +190,85 @@
   </div>
 
   <script>
-    const CHANNEL = "OOCSI-things/team-1";
-    const btn     = document.getElementById('ringBtn');
+    // ── Config ────────────────────────────────────────────────────────────
+    const CHANNEL  = "OOCSI-things/team-1";
+    const HOLD_MS  = 3000;   // must match ESP HOLD_MS
+    const SEND_MS  = 100;    // send every 100ms while held
 
-    // connect directly — no team dialog, instant sends
+    const btn      = document.getElementById('ringBtn');
+    const fill     = document.getElementById('progressFill');
+
+    // ── Connect ───────────────────────────────────────────────────────────
     window.OOCSI.connect("wss://oocsi.id.tue.nl/ws", "ringbutton_###");
 
-    // show connected after 2s
     setTimeout(() => {
       document.getElementById('dot').className = 'dot on';
-      document.getElementById('statusLabel').textContent = 'team-1 · ready';
+      document.getElementById('statusLabel').textContent = 'team-1 · hold 3s to ring';
     }, 2000);
 
-    function sendRing(e) {
+    // ── State ─────────────────────────────────────────────────────────────
+    let isDown      = false;
+    let pressStart  = 0;
+    let sendTimer   = null;
+    let rafId       = null;
+
+    // ── Pointer down: start sending every 100ms ───────────────────────────
+    function onDown(e) {
       e.preventDefault();
+      if (isDown) return;
+      isDown     = true;
+      pressStart = Date.now();
+
       btn.classList.add('pressed');
+      btn.setPointerCapture(e.pointerId);
+
+      // send immediately then every SEND_MS
+      sendSignal();
+      sendTimer = setInterval(sendSignal, SEND_MS);
+
+      // animate progress bar
+      animateProgress();
+
+      setStatus('holding…', 'sending');
+    }
+
+    // ── Pointer up: stop sending ──────────────────────────────────────────
+    function onUp(e) {
+      if (!isDown) return;
+      isDown = false;
+
+      clearInterval(sendTimer);
+      cancelAnimationFrame(rafId);
+
+      btn.classList.remove('pressed');
+      fill.style.width = '0%';
+
+      // send release signal so ESP knows finger lifted
+      window.OOCSI.send(CHANNEL, { ringbutton_ring: 0 });
+
+      setStatus('team-1 · hold 3s to ring', 'on');
+    }
+
+    // ── Send ring=1 every tick while held ─────────────────────────────────
+    function sendSignal() {
       window.OOCSI.send(CHANNEL, { ringbutton_ring: 1 });
     }
 
-    function releaseBtn() {
-      btn.classList.remove('pressed');
+    // ── Progress bar animation ────────────────────────────────────────────
+    function animateProgress() {
+      function step() {
+        if (!isDown) return;
+        const pct = Math.min((Date.now() - pressStart) / HOLD_MS * 100, 100);
+        fill.style.width = pct + '%';
+        if (pct < 100) rafId = requestAnimationFrame(step);
+        else fill.style.background = '#4caf50'; // green when triggered
+      }
+      rafId = requestAnimationFrame(step);
+    }
+
+    function setStatus(text, dotClass) {
+      document.getElementById('statusLabel').textContent = text;
+      document.getElementById('dot').className = 'dot ' + dotClass;
     }
   </script>
 </body>
